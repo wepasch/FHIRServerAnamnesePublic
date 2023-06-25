@@ -1,0 +1,40 @@
+{
+  "resourceType": "Patient",
+  "id": "",
+  "meta": {
+    "lastUpdated": ""
+  },
+  "name": [
+    {
+      "family": ""
+    },
+    {
+      "given": [
+        ""
+      ]
+    }
+  ],
+  "birthDate": "",
+  "gender": "",
+  "telecom": [
+    {
+      "system": "phone",
+      "value": ""
+    },
+    {
+      "system": "email",
+      "value": ""
+    }
+  ],
+  "address": [
+    {
+      "text": "",
+      "line": [
+        ""
+      ],
+      "city": "",
+      "postalCode": ""
+    }
+  ],
+  "active": false
+}

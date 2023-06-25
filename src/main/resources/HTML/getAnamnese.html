@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <script>
+      const baseUrlL = "http://127.0.0.1:8080/FHIRAnamnese/";
+      const baseUrlA = "http://13.53.138.202:8080/FHIRAnamnese/";
+      const baseUrl = baseUrlA;
+      const apiUrl = baseUrl + "api/";
+
+      function getPatients() {
+        patientSelection.style = "visibility: hidden";
+        patientSelection.innerHTML = "";
+        let patientsSelection = document.getElementById("patientsSelection");
+        patientsSelection.innerHTML = "";
+        let givenName = document.getElementById("patientSurnameIp").value;
+        let searchUrl = apiUrl + "Patient?name.family=" + givenName;
+        let patientsJson = getJsonFromApi(searchUrl);
+        if (patientsJson.length == 0) {
+          window.alert(
+            "Keine Patienten mit Nachnamen '" + givenName + "' gefunden."
+          );
+          return;
+        }
+        for (let i = 0; i < patientsJson.length; i++) {
+          let patientJson = patientsJson[i];
+          let patientNameJson = patientJson.name;
+          let patientDataString = getFullName(patientNameJson) + ", geb. " + getBirthday(patientJson.birthDate);
+
+
+          let showButton = document.createElement("button");
+          showButton.addEventListener("click", function () {
+            patientsSelection.innerHTML = "";
+            patientsSelection.style = "visibility: hidden";
+            showSelectedPatient(patientsJson[i]);
+          });
+          showButton.innerHTML = patientDataString;
+
+          let showButtonPara = document.createElement("p");
+          showButtonPara.appendChild(showButton);
+          patientsSelection.appendChild(showButtonPara);
+        }
+        patientsSelection.style = "visibility: visible";
+      }
+
+      function showSelectedPatient(patientJson) {
+
+        let selectedPatientElements = getElements(patientJson);
+        for (let i = 0; i < selectedPatientElements.length; i++) {
+          patientSelection.appendChild(selectedPatientElements[i]);
+        }
+        patientSelection.style = "visibility: visible";
+      }
+
+      function getElements(patientJson) {
+        let patientId = patientJson.id;
+        let coverageSearchUrl = apiUrl + "Coverage?beneficiary=Patient/" + patientId;
+        let coveragesJson = getJsonFromApi(coverageSearchUrl)[0];
+        let organizationReference = coveragesJson.payor[0].reference; 
+        let organizationJson = getJsonFromApi(apiUrl + organizationReference);
+        let questionnaireResponseSearchUrl = apiUrl + "QuestionnaireResponse?subject=Patient/" + patientId;
+        let questionnaireResponseJson = getJsonFromApi(questionnaireResponseSearchUrl)[0];
+        let questionnaireJson = getJsonFromApi(questionnaireResponseJson.questionnaire);
+
+        return createElements(patientJson, coveragesJson, organizationJson, questionnaireJson, questionnaireResponseJson);
+      }
+
+      function createElements(patientJson, coveragesJson, organizationJson, questionnaireJson, questionnaireResponseJson) {
+        let elements = getPatientElements(patientJson);
+        elements = elements.concat(getCoverageElements(coveragesJson, organizationJson));
+        elements = elements.concat(getMetaDataElements(patientJson));
+        elements = elements.concat(getQuestionnaireElements(questionnaireJson, questionnaireResponseJson));
+        return elements;
+      }
+
+      function getPatientElements(patientJson) {
+        let elements = [];
+        let element = document.createElement("h3");
+        element.innerHTML = "Stammdaten";
+        elements.push(element);
+        element = document.createElement("p");
+        element.innerHTML = mkFat("Name: ") + getFullName(patientJson.name);
+        elements.push(element);
+        element = document.createElement("p");
+        element.innerHTML = mkFat("Geboren: ") + getBirthday(patientJson.birthDate);
+        elements.push(element);
+        element = document.createElement("p");
+        element.innerHTML = mkFat("Geschlecht: ") + getGender(patientJson.gender);
+        elements.push(element);
+        element = document.createElement("p");
+        element.innerHTML = mkFat("Adresse: ") + patientJson.address[0].text;
+        elements.push(element);
+        element = document.createElement("p");
+        element.innerHTML = mkFat("Telefon: ") + patientJson.telecom[0].value;
+        elements.push(element);
+        element = document.createElement("p");
+        element.innerHTML = mkFat("E-Mail: ") + patientJson.telecom[1].value + "<br><br>";
+        elements.push(element);
+        return elements;
+      }
+
+      function getMetaDataElements(patientJson) {
+        let elements = [];
+        let element = document.createElement("h3");
+        element.innerHTML = "Metadaten";
+        elements.push(element);
+        element = document.createElement("p");
+        element.innerHTML = mkFat("Datensatz aktiv: ") + boolToGer(patientJson.active);
+        elements.push(element);
+        element = document.createElement("p");
+        element.innerHTML = mkFat("Zuletzt geändert: ") + getLastUpdate(patientJson.meta.lastUpdated) + "<br><br>";
+        elements.push(element);
+        return elements;
+      }
+
+      function getCoverageElements(coveragesJson, organizationJson) {
+        let elements = [];
+        let element = document.createElement("h3");
+        element.innerHTML = "Versicherung";
+        elements.push(element);
+        element = document.createElement("p");
+        element.innerHTML = mkFat("Krankenkasse: ") + organizationJson.name;
+        elements.push(element);
+        element = document.createElement("p");
+        element.innerHTML = mkFat("Versicherungsnummer: ") + coveragesJson.subscriberId + "<br><br>";
+        elements.push(element);
+        return elements;
+      }
+
+      function getQuestionnaireElements(questionnaireJson, questionnaireResponseJson) {
+        let elements = [];
+        let questions = questionnaireJson.item;
+        let patAnswers = questionnaireResponseJson.item;
+        let element = document.createElement("h3");
+        element.innerHTML = "Fragebogen: " + questionnaireJson.name;
+        elements.push(element);
+        for (let i = 0; i < questions.length; i++) {
+          element = document.createElement("p");
+          element.innerHTML = mkFat(questions[i].text + "<br>") +
+                                    patAnswers[i].answer[0].valueString;
+          elements.push(element);
+        }
+        return elements;
+      }
+
+      function boolToGer(bool) {
+        if (bool) {
+          return "ja";
+        }
+        return "nein";
+      }
+
+      function getFullName(dataName) {
+        var fullName = "";
+        dataName[1].given.forEach((firstName) => {
+          fullName += firstName + " ";
+        });
+        fullName += dataName[0].family;
+        return fullName;
+      }
+
+      function getJsonFromApi(url) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", url, false);
+        var response = null;
+        try {
+          xhr.send();
+          response = JSON.parse(xhr.responseText);
+        } catch (error) {
+          console.error("Error sending GET request:", error);
+        }
+        return response;
+      }
+
+      function getBirthday(dateString) {
+        var birthdayString = dateString.substring(8, 10) + ".";
+        birthdayString += dateString.substring(5, 7) + ".";
+        birthdayString += dateString.substring(0, 4);
+        return birthdayString;
+      }
+
+      function mkFat(string) {
+        return "<b>" + string + "</b>";
+      }
+
+      function getLastUpdate(date) {
+        string = "am ";
+        string += getBirthday(date);
+        string += " um ";
+        string += date.substring(11, 19);
+        string += " Uhr";
+        return string;
+      }
+
+      function getGender(engText) {
+        if (engText == "female") {
+          return "weiblich";
+        }
+        if (engText == "male") {
+          return "männlich";
+        }
+        if (engText == "other") {
+          return "divers";
+        }
+        return "unbekannt";
+      }
+
+      function showLinkMain() {
+        let mainLink = document.createElement("p");
+        mainLink.innerHTML = "Zurück zur <a href=\"" + baseUrl + "\"> Hauptseite</a>";
+        document.getElementById("patientSelection").insertAdjacentElement('afterend', mainLink);
+        document.getElementById("patientSelection").insertAdjacentElement('afterend', document.createElement("hr"));
+      }
+    </script>
+  </head>
+  <body onload="showLinkMain()">
+    <div id="surnameipDiv">
+      <label id="patientSurnameLabel">Geben Sie einen Nachnamen ein:</label
+      ><br />
+      <input id="patientSurnameIp" type="text" value="" />
+      <button id="btGetPatients" onclick="getPatients()">Suche</button>
+      <p></p>
+      <hr>
+      <p></p>
+    </div>
+    <div id="patientsSelection" style="visibility: hidden"></div>
+    <div id="patientSelection" style="visibility: hidden"></div>
+    </div>
+  </body>
+</html>

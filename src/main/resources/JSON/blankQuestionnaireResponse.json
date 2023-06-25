@@ -1,0 +1,10 @@
+{
+  "resourceType": "QuestionnaireResponse",
+  "id": "",
+  "subject" :  {
+    "reference" : ""
+  },
+  "questionnaire": "",
+  "status": "",
+  "item": []
+}

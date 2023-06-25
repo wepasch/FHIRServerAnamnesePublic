@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+#sendBt {
+  align-self: center;
+}
+    </style>
+    <script>
+      const devmode = false;
+
+      const baseUrlL = "http://127.0.0.1:8080/FHIRAnamnese/";
+      const baseUrlA = "http://13.53.138.202:8080/FHIRAnamnese/";
+      const baseUrl = baseUrlA;
+      const baseApiUrl = baseUrl + "api/";
+      const blankPatientUrl = baseApiUrl + "blankPatient";
+      const blankOrganizationUrl = baseApiUrl + "blankOrganization";
+      const blankCoverageUrl = baseApiUrl + "blankCoverage";
+      const blankQuestionnaireResponseUrl = baseApiUrl + "blankQuestionnaireResponse";
+      const patientApiUrl = baseApiUrl + "Patient";
+      const organizationApiUrl = baseApiUrl + "Organization";
+      const coverageApiUrl = baseApiUrl + "Coverage";
+      const questionnaireResponseApiUrl = baseApiUrl + "QuestionnaireResponse";
+      const questionnaireApiUrl = baseApiUrl + "Questionnaire";
+      var usedQuestionnaireId = 1;
+      var numberOfQuestions;
+
+      const LINE_BREAK = document.createElement("br");
+    
+      function getInputs() {
+        document.getElementById("sendBt").style.visibility =
+          "hidden";
+        let inputComplete = true;
+        let patNames = document.getElementById("namesIp").value;
+        let patSurname = document.getElementById("surnameIp").value;
+        let patGender = document.getElementById("genderIp").value;
+        let patBirthdate = dateFromString(document.getElementById("birthdateIp").value);
+        let patTelephone = evalTelephone(document.getElementById("telephoneIp").value);         
+        let patMail = document.getElementById("mailIp").value;
+        let patAddressLine1 = document.getElementById("addressLine1Ip").value;
+        let patAddressLine2 = evalHouseNumber(document.getElementById("addressLine2Ip").value);        
+        let patAddressPostalcode = document.getElementById("addressPostalcodeIp").value;
+        let patAddressCity = document.getElementById("addressCityIp").value;
+        let patInsurance = document.getElementById("insuranceIp").value;
+        let patInsuranceId = evalInsuranceId(document.getElementById("insuranceIdIp").value);
+        let patAnswers = Array(numberOfQuestions).fill("");
+        for (let i = 0; i < numberOfQuestions; i++) {
+          let answer = document.getElementById("question" + (i + 1) + "Ip").value;
+          if(answer == "-") {
+            answer = "[keine Angabe]";
+          }
+          patAnswers[i] = answer;
+        }
+
+        if (patNames == "") {
+          inputComplete = false;
+          console.warn("Enter name(s).");
+          document.getElementById("namesIp").style="background-color:LightPink;";
+        } else{
+          document.getElementById("namesIp").style="background-color:transparent;";       
+        }
+        if (patSurname == "") {
+          inputComplete = false;
+          console.warn("Enter surname.");
+          document.getElementById("surnameIp").style="background-color:LightPink;";
+        } else{
+          document.getElementById("surnameIp").style="background-color:transparent;";       
+        }
+        if (patGender == "-Auswahl-") {
+          inputComplete = false;
+          console.warn("Select a gender option.");
+          document.getElementById("genderIp").style="background-color:LightPink;";
+        } else{
+          document.getElementById("genderIp").style="background-color:transparent;";       
+        }
+        if (patBirthdate == null || patBirthdate > Date.now()) {
+          inputComplete = false;
+          console.warn("Enter a birthdate in the past.");
+          document.getElementById("birthdateIp").style="background-color:LightPink;";
+        } else{
+          document.getElementById("birthdateIp").style="background-color:transparent;";       
+        }
+        if (patTelephone == "") {
+          inputComplete = false;
+          console.warn("Enter telephone number.");
+          document.getElementById("telephoneIp").style="background-color:LightPink;";
+        } else{
+          document.getElementById("telephoneIp").style="background-color:transparent;";       
+        }
+        if (patMail == "" || !patMail.includes('@') || !patMail.includes('.')) {
+          inputComplete = false;
+          console.warn("Enter mail address.");
+          document.getElementById("mailIp").style="background-color:LightPink;";
+        } else{
+          document.getElementById("mailIp").style="background-color:transparent;";       
+        }        
+        if (patAddressLine1 == "") {
+          inputComplete = false;
+          console.warn("Enter address street.");
+          document.getElementById("addressLine1Ip").style="background-color:LightPink;";
+        } else{
+          document.getElementById("addressLine1Ip").style="background-color:transparent;";       
+        }
+        if (patAddressLine2 == "") {
+          inputComplete = false;
+          console.warn("Enter address house number.");
+          document.getElementById("addressLine2Ip").style="background-color:LightPink;";
+        } else{
+          document.getElementById("addressLine2Ip").style="background-color:transparent;";       
+        }
+        if (!isPostalcode(patAddressPostalcode)) {
+          inputComplete = false;
+          console.warn("Enter postalcode.");
+          document.getElementById("addressPostalcodeIp").style="background-color:LightPink;";
+        } else{
+          document.getElementById("addressPostalcodeIp").style="background-color:transparent;";       
+        }
+        if (patAddressCity == "") {
+          inputComplete = false;
+          console.warn("Enter city.");
+          document.getElementById("addressCityIp").style="background-color:LightPink;";
+        } else{
+          document.getElementById("addressCityIp").style="background-color:transparent;";       
+        }
+        if (patInsurance == "") {
+          inputComplete = false;
+          console.warn("Enter insurer.");
+          document.getElementById("insuranceIp").style="background-color:LightPink;";
+        } else{
+          document.getElementById("insuranceIp").style="background-color:transparent;";       
+        }
+        if (patInsuranceId == "") {
+          inputComplete = false;
+          console.warn("Enter insurance id.");
+          document.getElementById("insuranceIdIp").style="background-color:LightPink";
+        } else{
+          document.getElementById("insuranceIdIp").style="background-color:transparent;"; 
+        }      
+        for (let i = 0; i < numberOfQuestions; i++) {
+          if (patAnswers[i] == "") {
+            inputComplete = false;
+            console.warn("Enter answer for question " + (i + 1) + ".");
+            document.getElementById("question" + (i + 1) + "Ip").style.backgroundColor = "LightPink";
+            document.getElementById("question" + (i + 1) + "Ip").style.width = "90%";
+
+          } else {
+            document.getElementById("question" + (i + 1) + "Ip").style="background-color:transparent";
+            document.getElementById("question" + (i + 1) + "Ip").style.width = "90%";
+          }
+          }
+
+
+        if (inputComplete || devmode) {
+          if (document.getElementById("completeIp").checked) {
+            document.getElementById("completeIpText").style.border = "none";
+            let patPatientData = [patNames, patSurname, patGender, patBirthdate, patTelephone, patMail, patAddressLine1 + " " + patAddressLine2, patAddressPostalcode, patAddressCity];
+            let patCoverageData = [patInsurance, patInsuranceId];
+            let patQuestionnaireResponseData = patAnswers;
+            sendAnamnese(patPatientData, patCoverageData, patQuestionnaireResponseData);
+          } else {
+            console.warn("Confirm form completeness.");
+            document.getElementById("completeIpText").style.border = "5px solid LightPink";
+          }
+        } else {
+          document.getElementById("sendBt").style.visibility =
+          "visible";
+        }
+      }
+
+      function sendAnamnese(patPatientData, patCoverageData, patQuestionnaireResponseData) {     
+        let newPatientId = postPatient(patPatientData);
+        let newOrganizationId = getOrpostOrganization(patCoverageData[0], newPatientId);
+        let newCoverageId = postCoverage(patCoverageData, newPatientId, newOrganizationId);
+        let newQuestionnaireResponseId = postQuestionnaireResponse(patQuestionnaireResponseData, newPatientId); 
+
+        if (!(isNaN(newPatientId) || isNaN(newOrganizationId) || isNaN(newCoverageId) || isNaN(newQuestionnaireResponseId))) {
+          window.alert("Anamnese wurde gespeichert.");
+          /**
+          console.log("Patient/" + newPatientId + ", Oraganization/" + newOrganizationId +
+          ", Coverage/" + newCoverageId + ", QuestionnaireResponse/" + newQuestionnaireResponseId);
+          */
+        } else {
+          document.getElementById("sendBt").style.visibility =
+          "visible";
+          window.alert("Anamnese wurde NICHT gespeichert.");
+          console.error("Patient/" + newPatientId + ", Oraganization/" + newOrganizationId +
+          ", Coverage/" + newCoverageId + ", QuestionnaireResponse/" + newQuestionnaireResponseId);
+        }
+      }
+
+      function postPatient(patPatientData) {
+        let patientJson = getJsonFromApi(blankPatientUrl);
+        patientJson.active = true;
+        patientJson.name[1].given = patPatientData[0].split(' ');
+        patientJson.name[0].family = patPatientData[1];
+        patientJson.gender = getGenderEn(patPatientData[2]);
+        patientJson.birthDate = stringFromDate(patPatientData[3]);
+        patientJson.telecom[0].value = patPatientData[4];
+        patientJson.telecom[1].value = patPatientData[5];
+        patientJson.address[0].line[0] = patPatientData[6];
+        patientJson.address[0].postalCode = patPatientData[7];
+        patientJson.address[0].city = patPatientData[8];
+        patientJson.address[0].text = patPatientData[6] + " " + patPatientData[7] + " " + patPatientData[8];
+
+        let response = postJsonToApi(patientApiUrl, patientJson);
+        return response.generatedId;
+      }
+
+      function getOrpostOrganization(name) {
+        let hypoOrgsJson = getJsonFromApi(organizationApiUrl + "?name=" + name);
+        if (hypoOrgsJson.length > 0) {
+          return hypoOrgsJson[0].id;
+        }
+        let organizationJson = getJsonFromApi(blankOrganizationUrl);
+        organizationJson.name = name;
+        let response = postJsonToApi(organizationApiUrl, organizationJson);
+        return response.generatedId;
+      }
+
+      function postCoverage(patCoverageData, newPatientId, newOrganizationId) {
+        let coverageJson = getJsonFromApi(blankCoverageUrl);
+        coverageJson.status = "active";
+        coverageJson.subscriberId = patCoverageData[1];
+        coverageJson.beneficiary.reference = "Patient/" + newPatientId;
+        coverageJson.payor[0].reference = "Organization/" + newOrganizationId;
+        let response = postJsonToApi(coverageApiUrl, coverageJson);
+        return response.generatedId;
+      }
+
+      function postQuestionnaireResponse(patQuestionnaireResponseData, newPatientId) {
+        let questionnaireResponseJson = getJsonFromApi(blankQuestionnaireResponseUrl);
+        questionnaireResponseJson.subject.reference = "Patient/" + newPatientId;
+        questionnaireResponseJson.status = "completed";
+        questionnaireResponseJson.questionnaire = questionnaireApiUrl + "/" + usedQuestionnaireId
+        for (let i = 0; i < patQuestionnaireResponseData.length; i++) {
+          let itemJson = {};
+          itemJson.linkId = (i + 1);
+          itemJson.answer = [{ valueString: patQuestionnaireResponseData[i] }];
+          questionnaireResponseJson.item.push(itemJson);
+        }
+        let response = postJsonToApi(questionnaireResponseApiUrl, questionnaireResponseJson);
+        return response.generatedId;
+      }
+
+
+      function dateFromString(string) {
+        if (string == "") {
+          return null;
+        }
+        return new Date(string);
+      }
+
+      function stringFromDate(date) {
+        var year = date.getFullYear();
+        var month = String(date.getMonth() + 1).padStart(2, '0');
+        var day = String(date.getDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+      }
+
+      function mkFat(string) {
+        return "<b>" + string + "</b>";
+      }
+
+      function evalHouseNumber(string) {
+        string = string.replace(' ', '');
+	      if (!isNaN(string) && string > 0) {
+	        return string; 
+        }
+        for (let i = string.length; i > 0; i--) {
+          let partString = string.substring(0, i);
+          if (!isNaN(partString) && partString > 0) {
+            return partString + string.substring(i);
+          }
+        }
+        return "";
+      }
+
+      function evalTelephone(num) {
+        num = num.replace(' ', '');
+        num = num.replace('/', '');
+        num = num.replace('-', '');
+        if (isNaN(num)) {
+          return "";
+        }
+        return num;
+
+      }
+
+      function isPostalcode(code) {
+        if (code.length != 5) {
+          return false;
+        }
+        if (isNaN(code)) {
+          return false;
+        }
+        return true;
+      }
+
+      function evalInsuranceId(id) {
+        id = id.replace(/\s/g, '');
+        if (id.length != 12) {
+          return "";
+        }
+        let letter = id.charAt(8);
+        id = id.substring(0, 8) + id.substring(9);
+        if (!isLetter(letter)) {
+          return "";
+        }
+        letter = letter.toUpperCase();
+        if (isNaN(id)) {
+          return "";
+        }
+        return id.substring(0, 8) + letter + id.substring(8);
+      }
+
+      function isLetter(string) {
+        return string.match(/^[a-zA-Z]/);
+      }
+
+      function inistializeQuestions(id) {
+        let  questionnaire = getJsonFromApi(questionnaireApiUrl + "/" + id);
+        numberOfQuestions = questionnaire.item.length;
+        let inputForm = document.getElementById("inputForm");
+        for (let i = 0; i < numberOfQuestions; i++) {
+          let label = document.createElement("label");
+          label.id = "question" + (i + 1) + "Label";
+          label.textContent = (i + 1) + "." + questionnaire.item[i].text;
+          let input = document.createElement("textArea");
+          input.style.width = "90%";
+          input.id = "question" + (i + 1) + "Ip";
+          inputForm.appendChild(label);
+          inputForm.appendChild(document.createElement("br"));
+          inputForm.appendChild(input);
+          inputForm.appendChild(document.createElement("br"));
+          inputForm.appendChild(document.createElement("br"));
+        }
+      }
+
+      function getJsonFromApiOld(url) {
+        let xmlHttp = new XMLHttpRequest();
+        xmlHttp.open("GET", url, false);
+        xmlHttp.send();
+        return JSON.parse(xmlHttp.responseText);
+      }
+
+      function getJsonFromApi(url) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", url, false);
+        var response = null;
+        try {
+          xhr.send();
+          response = JSON.parse(xhr.responseText);
+        } catch (error) {
+          console.error("Error sending GET request:", error);
+        }
+        return response;
+      }
+
+
+      function postJsonToApi(url, jsonData) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", url, false);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        var response = null;
+        try {
+          xhr.send(JSON.stringify(jsonData));
+          response = JSON.parse(xhr.responseText);
+        } catch (error) {
+          console.error("Error sending POST request:", error);
+        } 
+        return response;
+      }
+
+      function getGenderEn(deText) {
+        if (deText == "weiblich") {
+          return "female";
+        }
+        if (deText == "männlich") {
+          return "male";
+        }
+        if (deText == "divers") {
+          return "other";
+        }
+        return "unknown";
+      }
+
+      function showLinkMain() {
+        let mainLink = document.createElement("p");
+        mainLink.innerHTML = "<br><br>Zurück zur <a href=\"" + baseUrl + "\"> Hauptseite</a>";
+        document.getElementById("sendBt").insertAdjacentElement('afterend', mainLink);
+      }
+
+      document.addEventListener("DOMContentLoaded", function() {
+        inistializeQuestions(usedQuestionnaireId);
+      });
+    </script>
+  </head>
+  <body onload="showLinkMain()">
+    <form id="inputForm">
+      <label id="personalCaption"><b>Persönliche Daten</b></label><br><br>
+      <label id="namesLabel">Vorname(n):</label>
+      <input id="namesIp"></input><br><br>
+      <label id="surnameLabel">Nachname:</label>
+      <input id="surnameIp"></input><br><br>
+      <label id="genderLabel">Geschlecht:</label>
+      <select id="genderIp" size="1">
+        <option>-Auswahl-</option>
+        <option>weiblich</option>
+        <option>männlich</option>
+        <option>divers</option>
+        <option>keine Angabe</option><br><br>
+      </select><br><br>
+      <label for="start">Geburstag:</label>
+      <input type="date" id="birthdateIp"
+       value=""
+       min="1900-01-01" max="2023-12-31"> <br><br>
+       <label id="telephoneLabel">Telefon:</label>
+       <input id="telephoneIp"></input><br><br>
+       <label id="mailLabel">E-Mail:</label>
+       <input id="mailIp"></input><br><br><br>
+       <label id="addressCaption"><b>Addresse</b></label><br><br>
+       <label id="addressLine1Label">Straße.:</label>
+       <input id="addressLine1Ip"></input>
+       <label id="addressLine2Label">Nr:</label>
+       <input id="addressLine2Ip"></input><br><br>
+       <label id="adressPostalCodeLabel">Postleitzahl:</label>
+       <input id="addressPostalcodeIp"></input><br><br>
+       <label id="addressCityLabel">Ort:</label>
+       <input id="addressCityIp"></input><br><br><br>
+       <label id="insuranceCaption"><b>Versicherung</b></label><br><br>
+       <label id="insuranceLabel">Krankenkasse:</label>
+       <input id="insuranceIp"></input><br><br>
+       <label id="insuranceIdLabel">Versicherungsnummer:</label>
+       <input id="insuranceIdIp"></input><br><br><br>
+      <label id="anamneseCaption"><b>Anamnese</b><br><i>Beantworten Sie bitte folgende Fragen. Falls Sie nichts zu einer Frage schreiben, geben Sie in das Feld ein Minus '-' ein.</i></label><br><br>
+    </form>
+    <div id="buttonContainer" class="container">
+      <label id="sendCaption"><i>Zum Abschicken der Anamnese: Vollständigkeit bestätigen und 'Abschicken' anklicken.</i></label>
+      <p id="completeIpText">Eingaben sind vollständig: <input id="completeIp" type="checkbox"></p>
+      <button id="sendBt" onclick="getInputs()">Abschicken</button>
+  </div>
+  </body>
+</html>

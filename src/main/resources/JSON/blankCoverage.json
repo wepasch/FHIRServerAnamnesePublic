@@ -1,0 +1,14 @@
+{
+  "resourceType": "Coverage",
+  "id": "",
+  "status": "",
+  "subscriberId" :  "",
+  "beneficiary": {
+    "reference": ""
+  },
+  "payor": [
+    {
+      "reference": ""
+    }
+  ]
+}

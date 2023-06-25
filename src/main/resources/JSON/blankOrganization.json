@@ -1,0 +1,15 @@
+{
+  "resourceType": "Organization",
+  "id": "",
+  "type": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+          "code": "prov"
+        }
+      ]
+    }
+  ],
+  "name": ""
+}

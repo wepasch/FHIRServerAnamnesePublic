@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <script>
+      const baseUrlL = "http://127.0.0.1:8080/FHIRAnamnese/";
+      const baseUrlA = "http://13.53.138.202:8080/FHIRAnamnese/";
+      const baseUrl = baseUrlA;
+      const apiPatientUrl = baseUrl + "api/patient/";
+
+
+      function getPatient() {
+        var data = "pending";
+        const patientId = document.getElementById("ipPatientId").value;
+        if (isNaN(patientId) || patientId < 1) {
+          console.error("Patient id must be a number.");
+          window.alert("Id muss eine Zahl größer 0 sein (Eingabe: " + patientId + ").");
+          return;
+        }
+        const getUrl = apiPatientUrl + patientId;
+        get(getUrl).then((response) => {
+          evaluateFields(response, patientId);
+        });
+      }
+
+      function evaluateFields(data, id) {
+        if (Object.keys(data).length === 0) {
+          console.error("Id " + id + " not found.")
+          window.alert("Id " + id + " wurde nicht gefunden.");
+          return;
+        }
+
+
+        document.getElementById("fullName").innerHTML =
+          mkFat("Name: ") + getFullName(data.name);
+        document.getElementById("birthday").innerHTML =
+          mkFat("Geboren: ") + getBirthday(data.birthDate);
+        document.getElementById("gender").innerHTML =
+        mkFat("Geschlecht: ") + getGender(data.gender);
+        document.getElementById("fullAddress").innerHTML =
+        mkFat("Adresse: ") + data.address[0].text;
+        document.getElementById("phone").innerHTML =
+        mkFat("Telefon: ") + data.telecom[0].value;
+        document.getElementById("mail").innerHTML =
+        mkFat("E-Mail: ") + data.telecom[1].value;
+        document.getElementById("active").innerHTML =
+        mkFat("Datensatz aktiv: ") + getActive(data.active);
+        document.getElementById("lastUpdate").innerHTML =
+        mkFat("Zuletzt geändert: ") + getLastUpdate(data.meta.lastUpdated);
+
+        showFields();
+      }
+
+      function showFields() {
+        document.getElementById("patientContainer").style.visibility =
+          "visible";
+      }
+
+      const request = (url, method = "GET") => {
+        let options = {
+          method,
+        };
+        if ("GET" === method) {
+        } else {
+          options.body = JSON.stringify(params);
+        }
+        return fetch(url, options).then((response) => response.json());
+      };
+
+      const get = (url, params) => request(url, "GET");
+
+      function idNotFound(id) {
+        console.warn("id '" + id + "' not found");
+      }
+
+      function getFullName(dataName) {
+        var fullName = "";
+        dataName[1].given.forEach((firstName) => {
+          fullName += firstName + " ";
+        });
+        fullName += dataName[0].family;
+        return fullName;
+      }
+
+      function getGender(engText) {
+        if (engText == "female") {
+          return "weiblich";
+        }
+        if (engText == "male") {
+          return "männlich";
+        }
+        if (engText == "other") {
+          return "divers";
+        }
+        return "unbekannt";
+      }
+
+      function getLastUpdate(date) {
+        string = "am ";
+        string += getBirthday(date);
+        string += " um ";
+        string += date.substring(11, 19);
+        string += " Uhr";
+        return string;
+      }
+
+      function getActive(act) {
+        if (act) {
+          return "ja";
+        }
+        return "nein";
+      }
+
+      function mkFat(string) {
+        return "<b>" + string + "</b>";
+      }
+
+      function getBirthday(dateString) {
+        var birthdayString = dateString.substring(8, 10) + ".";
+        birthdayString += dateString.substring(5, 7) + ".";
+        birthdayString += dateString.substring(0, 4);
+        return birthdayString;
+      }
+
+      function showLinkMain() {
+        let mainLink = document.createElement("p");
+        mainLink.innerHTML = "<br><br><br><br><br><br>Zurück zur <a href=\"" + baseUrl + "\"> Hauptseite</a>";
+        document.getElementById("patientContainer").insertAdjacentElement('afterend', mainLink);
+      }
+    </script>
+  </head>
+  <body onload="showLinkMain()">
+    <p><i>Um nach einen Patienten zu suchen, geben Sie eine Id in das Feld ein und klicken 'Suche'.</i></p>
+    <input id="ipPatientId" type="text" value="" />
+    <button id="btGetPatient" onclick="getPatient()">Suche</button>
+    <div id="patientContainer" style="visibility: hidden">
+      <p>
+        <h3>Stammdaten</h3>
+        <p id="fullName"></p>
+        <p id="birthday"></p>
+        <p id="gender"></p>
+        <p id="fullAddress"></p>
+        <p id="phone"></p>
+        <p id="mail"></p>
+        <br>
+    </p>
+    <p id="metaData">
+       <h3>Metadaten</h3>
+       <p id="active"></p>
+       <p id="lastUpdate"></p>
+    </p>
+    </div> 
+  </body>
+</html>
